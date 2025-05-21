@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Dark mode styles */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+/* Custom animation for blink */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
+/* Transition for dark mode */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
