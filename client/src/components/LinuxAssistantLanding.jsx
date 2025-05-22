@@ -45,8 +45,12 @@ export default function LinuxAssistantLanding() {
     return () => clearInterval(timer);
   }, []);
 
+  // When toggling dark mode, update localStorage and fire a custom event
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem('linuxAssistantDarkMode', newMode);
+    window.dispatchEvent(new Event('dark-mode-changed'));
   };
 
   const handleDemoRequest = () => {

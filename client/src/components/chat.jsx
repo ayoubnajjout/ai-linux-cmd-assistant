@@ -164,12 +164,30 @@ const ConnectionStatus = ({ isConnected, isDarkMode, onRetryConnection }) => {
 };
 
 // Main ChatApp Component
-export default function ChatApp() {  const [messages, setMessages] = useState([]);
+export default function ChatApp() {
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem('linuxAssistantDarkMode') === 'true' || false
-  );
+  // Always use localStorage for dark mode, and listen for changes
+  const getDarkMode = () => localStorage.getItem('linuxAssistantDarkMode') === 'true';
+  const [darkMode, setDarkMode] = useState(getDarkMode());
+
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'linuxAssistantDarkMode') {
+        setDarkMode(getDarkMode());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    // Also listen for custom event in case of same-tab toggling
+    const handleCustom = () => setDarkMode(getDarkMode());
+    window.addEventListener('dark-mode-changed', handleCustom);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('dark-mode-changed', handleCustom);
+    };
+  }, []);
+
   const [isConnected, setIsConnected] = useState(false);
   const [apiUrl, setApiUrl] = useState(
     localStorage.getItem('linuxAssistantApiUrl') || 'http://localhost:8000'
@@ -877,8 +895,8 @@ export default function ChatApp() {  const [messages, setMessages] = useState([]
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <Sidebar 
+    <div className={`flex h-screen antialiased text-gray-800 ${darkMode ? 'dark' : ''}`}>
+      <Sidebar
         darkMode={darkMode}
         conversations={conversations}
         currentConversationId={currentConversationId}
@@ -892,9 +910,9 @@ export default function ChatApp() {  const [messages, setMessages] = useState([]
         isVisible={sidebarVisible}
         toggleSidebar={toggleSidebar}
       />
-      <div className={`flex-1 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}> {/* Changed bg-white to bg-gray-800 for dark mode */}
+      <div className={`flex-1 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} print:bg-white`}>
         {/* Header */}
-        <header className={`p-3.5 border-b ${darkMode ? 'border-gray-700 bg-gray-850' : 'border-gray-300 bg-gray-50'} flex justify-between items-center print:hidden`}>
+        <header className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-gray-100'} flex justify-between items-center print:hidden`}>
           <div className="flex items-center">
             <button onClick={toggleSidebar} className={`mr-3 md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
