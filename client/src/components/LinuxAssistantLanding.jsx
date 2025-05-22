@@ -132,11 +132,16 @@ export default function LinuxAssistantLanding() {
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
               )}
-            </button>
-            <div className="hidden md:flex items-center space-x-6">
+            </button>            <div className="hidden md:flex items-center space-x-6">
               <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
               <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
               <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
+              <button 
+                onClick={() => navigate('/login', { state: { darkModePreference: darkMode } })}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-2 rounded-lg text-white hover:from-blue-700 hover:to-cyan-700 transition-colors"
+              >
+                Login / Register
+              </button>
             </div>
           </div>
         </nav>
@@ -165,14 +170,12 @@ export default function LinuxAssistantLanding() {
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
               Master Linux commands and shell scripting with our advanced AI assistant. 
               Get instant help, learn best practices, and automate your workflow.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            </p>            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <button 
-                onClick={() => navigate('/chat', { state: { darkModePreference: darkMode } })}
                 className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-cyan-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                onClick={() => navigate('/login', { state: { darkModePreference: darkMode } })}
               >
-                Try Demo Now
+                Get Started
               </button>
               <button className="px-8 py-4 border-2 border-blue-500 rounded-xl font-semibold text-lg hover:bg-blue-500 hover:bg-opacity-20 transition-all duration-200">
                 Learn More
@@ -242,64 +245,53 @@ export default function LinuxAssistantLanding() {
               </div>
             </div>
           </div>
-        </section>
-
-        {/* Demo Section */}
+        </section>        {/* Demo Section */}
         <section id="demo" className="py-20">
           <div className="max-w-4xl mx-auto px-6">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-6">Try it Now</h2>
-              <p className="text-xl text-gray-300">Ask your Linux question and see the AI in action</p>
+              <h2 className="text-4xl font-bold mb-6">Example Questions</h2>
+              <p className="text-xl text-gray-300">Our AI can answer all these questions and more</p>
             </div>
-            
-            <div className="bg-gray-800 bg-opacity-50 rounded-2xl p-8 backdrop-blur-sm">
+              <div className="bg-gray-800 bg-opacity-50 rounded-2xl p-8 backdrop-blur-sm">
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  What would you like to learn about Linux?
+                  Common Linux commands our AI can help with:
                 </label>
                 <div className="relative">
-                  <input
-                    type="text"
-                    value={demoQuestion}
-                    onChange={(e) => setDemoQuestion(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="e.g., How do I find all files larger than 100MB?"
-                    className="w-full px-4 py-4 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  />
+                  <div className="w-full px-4 py-4 bg-gray-700 border border-gray-600 rounded-xl text-white text-lg">
+                    How do I find all files larger than 100MB?
+                  </div>
                   <button
-                    onClick={handleDemoRequest}
-                    disabled={!demoQuestion.trim()}
-                    className="absolute right-2 top-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    onClick={() => navigate('/login', { state: { darkModePreference: darkMode } })}
+                    className="absolute right-2 top-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all duration-200"
                   >
-                    Ask AI
+                    Sign In
                   </button>
                 </div>
               </div>
               
               <div className="mb-4">
-                <p className="text-sm text-gray-400 mb-3">Or try one of these popular questions:</p>
+                <p className="text-sm text-gray-400 mb-3">Popular Linux command questions:</p>
                 <div className="flex flex-wrap gap-2">
                   {demoQuestions.map((question, index) => (
-                    <button
+                    <div
                       key={index}
-                      onClick={() => selectDemoQuestion(question)}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-gray-300 hover:text-white transition-colors duration-200"
+                      className="px-4 py-2 bg-gray-700 rounded-lg text-sm text-gray-300 transition-colors duration-200"
                     >
                       {question}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
-              
-              <div className="border-t border-gray-600 pt-6">
+                <div className="border-t border-gray-600 pt-6">
                 <div className="flex items-center justify-center space-x-4 text-sm text-gray-400">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>AI Model Ready</span>
+                    <span>Always Available</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Real-time Response</span>
+                    <span>Expert Knowledge</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
