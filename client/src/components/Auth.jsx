@@ -244,7 +244,7 @@ export default function Auth({ darkMode, darkModeString }) {
       
       <div className={`py-4 text-center ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
         <button 
-          onClick={() => window.history.back()} 
+          onClick={() => navigate('/')} 
           className="text-sm flex items-center justify-center space-x-1 mx-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

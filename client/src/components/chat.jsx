@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import LoadingScreen from './LoadingScreen';
+import Sidebar from './Sidebar';
 
 // Sample initial chat data - only shown for first-time users
 const getInitialMessages = (isFirstTime = true) => {
@@ -29,7 +31,7 @@ const AiMessage = ({ message, isDarkMode }) => {
   return (
     <div className="flex items-start mb-4">
       <div className="flex-shrink-0 mr-3 mt-1">
-        <div className="bg-blue-500 rounded-full p-2 text-white">
+        <div className="bg-blue-500 rounded-full p-2 text-white"> {/* AI Icon, kept blue */}
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 8V4H8" />
             <rect x="2" y="2" width="20" height="8" rx="2" />
@@ -40,7 +42,7 @@ const AiMessage = ({ message, isDarkMode }) => {
         </div>
       </div>
       <div className="flex-1">
-        <div className={`${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'} rounded-lg px-4 py-3 max-w-full`}>
+        <div className={`${isDarkMode ? 'bg-slate-700 text-gray-200' : 'bg-gray-200 text-gray-800'} rounded-lg px-4 py-3 max-w-full`}>
           <div className="whitespace-pre-wrap">
             {message.content}
           </div>
@@ -63,7 +65,7 @@ const UserMessage = ({ message }) => {
   return (
     <div className="flex items-start mb-4 justify-end">
       <div className="flex-1 text-right">
-        <div className="bg-blue-600 rounded-lg px-4 py-3 inline-block text-left max-w-full ml-12">
+        <div className="bg-blue-500 rounded-lg px-4 py-3 inline-block text-left max-w-full ml-12"> {/* User message bubble, changed to blue-500 */}
           <div className="whitespace-pre-wrap text-white">
             {message.content}
           </div>
@@ -140,8 +142,8 @@ const ConnectionStatus = ({ isConnected, isDarkMode, onRetryConnection }) => {
   return (
     <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs ${
       isConnected
-        ? isDarkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'
-        : isDarkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-800'
+        ? isDarkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-700'
+        : isDarkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-700'
     }`}>
       <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
       <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
@@ -162,8 +164,7 @@ const ConnectionStatus = ({ isConnected, isDarkMode, onRetryConnection }) => {
 };
 
 // Main ChatApp Component
-export default function ChatApp() {
-  const [messages, setMessages] = useState([]);
+export default function ChatApp() {  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -178,9 +179,73 @@ export default function ChatApp() {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [serverCheckAttempts, setServerCheckAttempts] = useState(0);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const toggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
+  };
+
+  const loadConversationMessages = useCallback(async (conversationId) => {
+    if (!userInfo?.id || !conversationId) {
+      if (!conversationId) {
+        setMessages(getInitialMessages(conversations.length === 0));
+      }
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${apiUrl}/conversations/${conversationId}/details/${userInfo.id}`, {
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.messages && data.messages.length > 0) {
+          const formattedMessages = data.messages.map(msg => ({
+            id: msg.id,
+            sender: msg.sender,
+            content: msg.content,
+            timestamp: msg.timestamp,
+            conversationId: conversationId 
+          }));
+          setMessages(formattedMessages);
+        } else {
+          // No messages for this conversation, show personalized AI welcome message
+          setMessages([
+            {
+              id: 'ai-welcome',
+              sender: 'ai',
+              content: `Hi ${userInfo?.username || 'there'}, I'm here to assist you with Linux commands! Ask me anything.`,
+              timestamp: new Date().toISOString(),
+              conversationId: conversationId
+            }
+          ]);
+        }
+      } else {
+        console.error("Failed to load conversation messages:", response.statusText);
+        setMessages([{
+          id: 'error-load-' + Date.now(),
+          sender: 'error',
+          content: `Failed to load messages. Status: ${response.statusText}`,
+          timestamp: new Date().toISOString()
+        }]);
+      }
+    } catch (error) {
+      console.error("Error loading conversation messages:", error);
+      setMessages([{
+        id: 'error-load-catch-' + Date.now(),
+        sender: 'error',
+        content: `Error loading messages: ${error.message}`,
+        timestamp: new Date().toISOString()
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl, userInfo, setMessages, conversations]); // Added conversations dependency
 
   // Update localStorage when dark mode changes
   useEffect(() => {
@@ -197,101 +262,89 @@ export default function ChatApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load user information and previous conversations
+  // Load user information
   useEffect(() => {
     const storedUserInfo = localStorage.getItem('linuxAssistantUser');
     if (!storedUserInfo) {
       navigate('/login');
+    } else {
+      setUserInfo(JSON.parse(storedUserInfo));
+    }
+  }, [navigate]);
+
+  // Load previous conversations once user info is available
+  useEffect(() => {
+    if (!userInfo?.id) {
       return;
     }
-   
-    const userInfo = JSON.parse(storedUserInfo);
-    setUserInfo(userInfo);
-    
+
     const loadPreviousConversations = async () => {
+      // setIsLoading(true); // Optional: indicate loading for initial conversations
       try {
-        const userId = userInfo.id;
-        console.log("Loading conversations for user:", userId);
+        await checkServerHealthWithRetry(1, 3000); // Ensure server is reachable
+        setIsConnected(true);
        
-        // Check server health first
-        try {
-          await checkServerHealthWithRetry(1, 3000);
-          setIsConnected(true);
-        } catch (error) {
-          console.warn("Health check failed while loading conversations:", error);
-          setIsConnected(false);
-        }
-       
-        // Load conversations
-        const response = await fetch(`${apiUrl}/conversations/${userId}`, {
-          signal: AbortSignal.timeout(10000) // 10 second timeout
+        const response = await fetch(`${apiUrl}/conversations/${userInfo.id}`, {
+          signal: AbortSignal.timeout(10000)
         });
        
         if (response.ok) {
           const data = await response.json();
           const userConversations = data || [];
           setConversations(userConversations);
-          console.log("Loaded previous conversations:", userConversations);
           
           if (userConversations.length > 0) {
-            // Sort conversations by most recent first
             const sortedConversations = [...userConversations].sort((a, b) => {
-              if (a.timestamp && b.timestamp) {
-                return new Date(b.timestamp) - new Date(a.timestamp);
-              }
-              return 0;
+              const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+              const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+              return dateB - dateA;
             });
-           
-            // Map all previous conversations to messages
-            const allMessages = [];
-            
-            sortedConversations.forEach((conversation, index) => {
-              // Add user question
-              allMessages.push({
-                id: `user_${conversation.id}_${index}`,
-                sender: 'user',
-                content: conversation.question,
-                timestamp: conversation.timestamp,
-                conversationId: conversation.id
-              });
-              
-              // Add AI response
-              allMessages.push({
-                id: `ai_${conversation.id}_${index}`,
-                sender: 'ai',
-                content: conversation.answer,
-                timestamp: conversation.timestamp,
-                conversationId: conversation.id
-              });
-            });
-           
-            setMessages(allMessages);
-            console.log("Formatted and set all messages:", allMessages);
-            
-            // Set the most recent conversation as current
-            setCurrentConversationId(sortedConversations[0].id);
+            if (sortedConversations.length > 0 && sortedConversations[0].id) {
+                 setCurrentConversationId(sortedConversations[0].id);
+                 // Messages will be loaded by the useEffect hook dependent on currentConversationId
+            } else {
+                 setCurrentConversationId(null);
+                 setMessages(getInitialMessages(true)); // Should not happen if userConversations.length > 0
+            }
           } else {
-            console.log("No previous conversations found - showing welcome message");
-            // First time user - show welcome message
+            // No conversations exist for the user
+            setCurrentConversationId(null);
             setMessages(getInitialMessages(true));
           }
         } else {
           console.error("Failed to load conversations:", response.status);
           setIsConnected(false);
-          // Show welcome message if API fails
+          setCurrentConversationId(null);
           setMessages(getInitialMessages(true));
         }
       } catch (error) {
         console.error("Failed to load previous conversations:", error);
         setIsConnected(false);
-        // Show welcome message if loading fails
+        setCurrentConversationId(null);
         setMessages(getInitialMessages(true));
+      } finally {
+        // setIsLoading(false); // Optional: stop indication for initial conversations
+        setInitializing(false); // Ensure initializing is false after attempting to load user data
       }
     };
    
     loadPreviousConversations();
-  }, [apiUrl, navigate]);
+  }, [apiUrl, userInfo]); // Removed navigate, checkServerHealthWithRetry can be defined outside or memoized if needed as dependency
 
+  // Effect to load conversation messages when currentConversationId changes
+  useEffect(() => {
+    if (currentConversationId && userInfo?.id) {
+      loadConversationMessages(currentConversationId);
+    } else if (!currentConversationId) {
+      // If no current conversation is selected
+      if (conversations.length === 0) {
+        setMessages(getInitialMessages(true)); // "First time" style welcome
+      } else {
+        setMessages(getInitialMessages(false)); // "Select a conversation" style
+      }
+    }
+  }, [currentConversationId, userInfo, loadConversationMessages, conversations]);
+  
   // Handle the initial question if provided through navigation state
   useEffect(() => {
     const demoQuestion = location.state?.demoQuestion;
@@ -443,37 +496,41 @@ export default function ChatApp() {
   };
 
   // FIXED callFastAPI function with better timeout handling
-  const callFastAPI = async (question) => {
+  const callFastAPI = async (question, conversationId = null) => {
     let userId;
    
     try {
-      // Get authenticated user ID
       const storedUserInfo = localStorage.getItem('linuxAssistantUser');
       if (storedUserInfo) {
         const parsedUserInfo = JSON.parse(storedUserInfo);
         if (parsedUserInfo && parsedUserInfo.id) {
           userId = parsedUserInfo.id;
-          console.log(`Using authenticated user ID: ${userId}`);
         } else {
           throw new Error("No valid user ID found in stored user info");
         }
       } else {
+        navigate('/login'); // Redirect to login if no user info
         throw new Error("No user authentication found. Please log in again.");
       }
 
-      console.log(`Sending request to ${apiUrl}/ask with question: ${question} and user_id: ${userId}`);
+      const payload = {
+        question: question,
+        user_id: userId,
+      };
+
+      if (conversationId) {
+        payload.conversation_id = conversationId;
+      }
+
+      console.log(`Sending request to ${apiUrl}/ask with payload:`, payload);
      
-      // Make the actual API request with extended timeout
       const response = await fetch(`${apiUrl}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          question: question,
-          user_id: userId
-        }),
-        signal: AbortSignal.timeout(30000) // 30 second timeout for main request
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(30000) 
       });
        
       // Handle server errors
@@ -545,39 +602,49 @@ export default function ChatApp() {
 
   const processQuestion = async (question) => {
     setIsLoading(true);
+    let userId = userInfo?.id;
+
+    if (!userId) {
+        console.error("User ID not available in processQuestion. User might be logged out.");
+        setMessages(prev => [...prev, {
+            id: Date.now() +1, sender: 'error', content: 'User information is missing. Please log in again.', timestamp: new Date().toISOString()
+        }]);
+        setIsLoading(false);
+        navigate('/login');
+        return;
+    }
    
     try {
-      console.log("Calling API with question:", question);
-      const response = await callFastAPI(question);
-      console.log("Received API response:", response);
+      console.log("Calling API with question:", question, "for conversation:", currentConversationId);
+      const apiResponse = await callFastAPI(question, currentConversationId); // Pass currentConversationId
+      console.log("Received API response:", apiResponse);
      
       const newAiMessage = {
-        id: Date.now() + 1,
+        id: Date.now() + 1, 
         sender: 'ai',
-        content: response.answer,
+        content: apiResponse.answer,
         timestamp: new Date().toISOString(),
-        conversationId: response.conversationId
+        conversationId: apiResponse.conversationId 
       };
      
       setMessages(prev => [...prev, newAiMessage]);
      
-      if (response.conversationId) {
-        setCurrentConversationId(response.conversationId);
+      if (apiResponse.conversationId) {
+        if (currentConversationId !== apiResponse.conversationId) {
+            setCurrentConversationId(apiResponse.conversationId);
+        }
         
         // Refresh conversations list
         try {
-          const userId = userInfo?.id;
-          if (userId) {
-            const convsResponse = await fetch(`${apiUrl}/conversations/${userId}`, {
-              signal: AbortSignal.timeout(10000)
-            });
-            if (convsResponse.ok) {
-              const data = await convsResponse.json();
-              setConversations(data || []);
-            }
+          const convResponse = await fetch(`${apiUrl}/conversations/${userId}`);
+          if (convResponse.ok) {
+            const data = await convResponse.json();
+            setConversations(data || []);
+          } else {
+             console.error("Failed to refresh conversations list after sending message.");
           }
         } catch (refreshError) {
-          console.error("Failed to refresh conversations:", refreshError);
+          console.error("Error refreshing conversations list:", refreshError);
         }
       }
     } catch (error) {
@@ -605,7 +672,8 @@ export default function ChatApp() {
       id: Date.now(),
       sender: 'user',
       content: userQuestion,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      conversationId: currentConversationId // Associate with current conversation
     };
    
     setMessages(prev => [...prev, newUserMessage]);
@@ -661,242 +729,265 @@ export default function ChatApp() {
     return <LoadingScreen demoQuestion={location.state?.demoQuestion} />;
   }
 
-  return (
-    <div className={`${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'} flex flex-col h-screen`}>
-      {/* Header */}
-      <header className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} shadow px-4 py-3 flex items-center justify-between border-b`}>
-        <div className="flex items-center space-x-3">
-          <div className="bg-blue-500 rounded-full p-2 text-white cursor-pointer" onClick={() => navigate('/')}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </div>
-          <div className="flex items-center">
-            <div>
-              <h1 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Linux Command Assistant</h1>
-              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Powered by AI</p>
-            </div>
-            
-          </div>
-        </div>
-          
-        <div className="flex items-center space-x-3">
-          {userInfo && (
-            <div className="flex items-center mr-2">
-              <span className={`text-sm hidden sm:inline ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                {userInfo.username}
-              </span>
-            </div>
-          )}
-         
-          <ConnectionStatus
-            isConnected={isConnected}
-            isDarkMode={darkMode}
-            onRetryConnection={() => checkServerHealthWithRetry(3, 8000)}
-          />
-         
-          {/* Dark/Light Mode Toggle */}
-          <button
-            onClick={toggleDarkMode}
-            className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100 text-gray-600'}`}
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <path d="M12 1v2" />
-                <path d="M12 21v2" />
-                <path d="M4.22 4.22l1.42 1.42" />
-                <path d="M18.36 18.36l1.42 1.42" />
-                <path d="M1 12h2" />
-                <path d="M21 12h2" />
-                <path d="M4.22 19.78l1.42-1.42" />
-                <path d="M18.36 5.64l1.42-1.42" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
-         
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100 text-gray-600'}`}
-            aria-label="Logout"
-            title="Logout"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-         
-          {/* Refresh connection button */}
-          <button
-            onClick={checkServerHealth}
-            className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100 text-gray-600'}`}
-            aria-label="Check server connection"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-              <path d="M8 16H3v5" />
-            </svg>
-          </button>
-         
-          {/* API URL configuration button */}
-          <button
-            onClick={changeApiUrl}
-            className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-100 text-gray-600'}`}
-            aria-label="Configure API URL"
-            title="Configure API URL"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-          </button>
-        </div>
-      </header>
+  // Function to create a new conversation
+  const createNewConversation = async () => {
+    if (!userInfo?.id) {
+      console.error("Cannot create new conversation: User ID is missing.");
+      // Optionally, show a message to the user or redirect to login
+      alert("User information is missing. Please log in again.");
+      navigate('/login');
+      return;
+    }
+
+    if (!isConnected) {
+      alert("Cannot create new conversation: Server is not connected. Please check your connection.");
+      return;
+    }
+
+    setIsLoading(true); // Indicate loading state
+    try {
+      const response = await fetch(`${apiUrl}/conversations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userInfo.id,
+          // title: "New Conversation" // Title can be set by the backend or edited later
+        }),
+        signal: AbortSignal.timeout(10000) // 10-second timeout
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Failed to create new conversation:", response.status, errorData);
+        alert(`Failed to create new conversation. Server responded with: ${response.status} - ${errorData.substring(0,100)}`);
+        throw new Error(`Failed to create new conversation. Status: ${response.status}`);
+      }
+
+      const newConversation = await response.json();
+      console.log("Created new conversation:", newConversation);
+
+      // Add the new conversation to the list and set it as current
+      setConversations(prev => [newConversation, ...prev]); // Add to the beginning
+      setCurrentConversationId(newConversation.id);
+      // Messages for the new conversation (usually an initial AI welcome) will be loaded by the useEffect hook
+      // that depends on currentConversationId
+
+    } catch (error) {
+      console.error("Error creating new conversation:", error);
+      if (error.name === 'TimeoutError') {
+        alert("Creating new conversation timed out. Please try again.");
+      } else if (!error.message.includes("Status:")){ // Avoid double alerting for failed responses
+        alert("An error occurred while creating the new conversation. Please check the console for details.");
+      }
+    } finally {
+      setIsLoading(false); // Stop loading indication
+    }
+  };
+
+  // Function to delete a conversation
+  const handleDeleteConversation = async (conversationIdToDelete) => {
+    if (!userInfo?.id || !conversationIdToDelete) {
+      console.error("User info or conversation ID missing for delete operation.");
+      setMessages(prev => [...prev, {
+        id: 'error-delete-' + Date.now(),
+        sender: 'error',
+        content: 'Could not delete conversation: User or Conversation ID missing.',
+        timestamp: new Date().toISOString()
+      }]);
+      return;
+    }
+
+    // Optimistically remove the conversation from the UI
+    const previousConversations = conversations;
+    const updatedConversations = conversations.filter(conv => conv.id !== conversationIdToDelete);
+    setConversations(updatedConversations);
+
+    if (currentConversationId === conversationIdToDelete) {
+      if (updatedConversations.length > 0) {
+        // Select the most recent conversation
+        const sortedConversations = [...updatedConversations].sort((a, b) => {
+            const dateA = a.timestamp ? new Date(a.timestamp) : new Date(0);
+            const dateB = b.timestamp ? new Date(b.timestamp) : new Date(0);
+            return dateB - dateA;
+        });
+        setCurrentConversationId(sortedConversations[0].id);
+      } else {
+        setCurrentConversationId(null);
+        setMessages(getInitialMessages(true)); // Show initial welcome if no conversations left
+      }
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/conversations/${conversationIdToDelete}/${userInfo.id}`, { // Corrected URL
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000) 
+        // No body needed as user_id is in the path
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to delete conversation on server.' }));
+        console.error("Failed to delete conversation on server:", response.status, errorData.detail);
+        // Revert optimistic update
+        setConversations(previousConversations);
+        if (currentConversationId === conversationIdToDelete || !currentConversationId && previousConversations.length > 0) {
+            setCurrentConversationId(conversationIdToDelete); // Or select another appropriate one
+        }
         
-      {/* Offline warning banner */}
-      {!isConnected && (
-        <div className={`px-4 py-3 ${darkMode ? 'bg-yellow-900 border-yellow-800 text-yellow-200' : 'bg-yellow-100 border-yellow-300 text-yellow-800'} border-b`}>
-          <div className="flex items-center justify-between max-w-3xl mx-auto">
-            <div className="flex items-center space-x-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <div>
-                <p className="font-medium">Server connection issue</p>
-                <p className="text-sm">
-                  The FastAPI server at {apiUrl} is not responding. Ensure the server is running.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => checkServerHealthWithRetry(3, 8000)}
-              className={`px-3 py-1 rounded-md text-sm ${darkMode ? 'bg-yellow-800 hover:bg-yellow-700' : 'bg-yellow-200 hover:bg-yellow-300'}`}
+        setMessages(prev => [...prev, {
+          id: 'error-delete-server-' + Date.now(),
+          sender: 'error',
+          content: `Server error deleting conversation: ${errorData.detail || response.statusText}`,
+          timestamp: new Date().toISOString()
+        }]);
+      } else {
+        console.log(`Conversation ${conversationIdToDelete} deleted successfully.`);
+        // If the deleted conversation was the current one, and no other conversation was selected,
+        // ensure messages are cleared or set to initial state.
+        if (currentConversationId === null && updatedConversations.length === 0) {
+            setMessages(getInitialMessages(true));
+        }
+        // Optionally, trigger a re-fetch of conversations if IDs/order might change significantly
+        // or rely on the optimistic update.
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      // Revert optimistic update
+      setConversations(previousConversations);
+      if (currentConversationId === conversationIdToDelete || !currentConversationId && previousConversations.length > 0) {
+        setCurrentConversationId(conversationIdToDelete);
+      }
+
+      setMessages(prev => [...prev, {
+        id: 'error-delete-catch-' + Date.now(),
+        sender: 'error',
+        content: `Client error deleting conversation: ${error.message}`,
+        timestamp: new Date().toISOString()
+      }]);
+    }
+  };
+
+  // If initializing with a demo question, show loading screen
+  if (initializing) {
+    return <LoadingScreen demoQuestion={location.state?.demoQuestion} />;
+  }
+
+  return (
+    <div className={`flex h-screen overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <Sidebar 
+        darkMode={darkMode}
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        setCurrentConversationId={setCurrentConversationId}
+        createNewConversation={createNewConversation}
+        onDeleteConversation={handleDeleteConversation}
+        apiUrl={apiUrl}
+        userId={userInfo?.id} // Pass the actual user ID
+        userInfo={userInfo}
+        setConversations={setConversations}
+        isVisible={sidebarVisible}
+        toggleSidebar={toggleSidebar}
+      />
+      <div className={`flex-1 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}> {/* Changed bg-white to bg-gray-800 for dark mode */}
+        {/* Header */}
+        <header className={`p-3.5 border-b ${darkMode ? 'border-gray-700 bg-gray-850' : 'border-gray-300 bg-gray-50'} flex justify-between items-center print:hidden`}>
+          <div className="flex items-center">
+            <button onClick={toggleSidebar} className={`mr-3 md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <h1 className={`text-xl font-semibold ${darkMode ? 'text-blue-200' : 'text-blue-700'}`}>
+              {currentConversationId && conversations.find(c => c.id === currentConversationId)
+                ? conversations.find(c => c.id === currentConversationId).title
+                : "Linux Command Assistant"}
+            </h1>
+          </div>
+          <div className="flex items-center space-x-3">
+            <ConnectionStatus isConnected={isConnected} isDarkMode={darkMode} onRetryConnection={() => checkServerHealthWithRetry(0, 2000)} />
+            <button 
+              onClick={toggleDarkMode} 
+              className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700 text-yellow-400' : 'hover:bg-gray-200 text-gray-600'}`}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              Reconnect
+              {darkMode ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2"/>
+                  <path d="M12 20v2"/>
+                  <path d="m4.93 4.93 1.41 1.41"/>
+                  <path d="m17.66 17.66 1.41 1.41"/>
+                  <path d="M2 12h2"/>
+                  <path d="M20 12h2"/>
+                  <path d="m6.34 17.66-1.41 1.41"/>
+                  <path d="m19.07 4.93-1.41 1.41"/>
+                </svg>
+              )}
+            </button>
+            <button onClick={changeApiUrl} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600'}`} title="Change API URL">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.62 2.514a1 1 0 0 1 1.242.21l3.015 3.015a1 1 0 0 1 .21 1.242L9.01 19.018a1 1 0 0 1-1.112.39L2.514 17.38a1 1 0 0 1-.616-1.112l3.015-10.74a1 1 0 0 1 .39-.616zM13.5 6.5l4 4M2.5 21.5l4-4"/><path d="m19 5-9 9"/></svg>
+            </button>
+            <button onClick={handleLogout} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-red-700 text-red-400' : 'hover:bg-red-100 text-red-600'}`} title="Logout">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           </div>
-        </div>
-      )}
-     
-      {/* Main chat area */}
-      <div className={`flex-1 overflow-y-auto p-4 pb-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-        <div className="max-w-3xl mx-auto">
-          {messages.map(message => {
-            if (message.sender === 'ai') {
-              return <AiMessage key={message.id} message={message} isDarkMode={darkMode} />;
-            } else if (message.sender === 'user') {
-              return <UserMessage key={message.id} message={message} />;
-            } else if (message.sender === 'error') {
-              return (
-                <ErrorMessage
-                  key={message.id}
-                  message={message.content}
-                  isDarkMode={darkMode}
-                  onRetry={() => handleRetryMessage(message.originalQuestion)}
-                />
-              );
+        </header>
+
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((msg, index) => {
+            if (msg.sender === 'ai' || msg.sender === 'bot') { // Modified to check for 'bot' as well
+              return <AiMessage key={msg.id || index} message={msg} isDarkMode={darkMode} />;
+            } else if (msg.sender === 'user') {
+              return <UserMessage key={msg.id || index} message={msg} />;
+            } else if (msg.sender === 'error') {
+              return <ErrorMessage 
+                        key={msg.id || index} 
+                        message={msg.content} 
+                        isDarkMode={darkMode} 
+                        onRetry={msg.originalQuestion ? () => handleRetryMessage(msg.originalQuestion) : null} 
+                     />;
             }
             return null;
           })}
-         
-          {isLoading && (
-            <div className="flex items-start mb-4">
-              <div className="flex-shrink-0 mr-3 mt-1">
-                <div className="bg-blue-500 rounded-full p-2 text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className={`${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-lg px-4 py-3 inline-block`}>
-                  <div className="flex items-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                    </svg>
-                    <span>AI is thinking...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-         
           <div ref={messagesEndRef} />
         </div>
-      </div>
-     
-      {/* Input area */}
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t p-4`}>
-        <div className="max-w-3xl mx-auto relative">
-          <div className={`flex items-end rounded-lg border ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'} focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500`}>
+
+        {/* Input Area */}
+        <div className={`chat-input-area p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+          <div className="flex items-center">
             <textarea
-              className={`flex-1 py-3 px-4 bg-transparent resize-none focus:outline-none ${darkMode ? 'text-white placeholder-gray-400' : 'text-gray-800 placeholder-gray-500'} max-h-32`}
-              placeholder={isConnected
-                ? "Ask me about Linux commands..."
-                : serverCheckAttempts > 2
-                  ? `Server at ${apiUrl} seems offline. Click "Configure API URL" to change it.`
-                  : "Server disconnected. Please check connection or click Reconnect."
-              }
-              rows="1"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isLoading || !isConnected}
+              placeholder="Type your command or question..."
+              className={`flex-1 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:ring-blue-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:ring-blue-500'}`}
+              rows="1"
+              style={{ minHeight: '48px', maxHeight: '150px' }}
             />
-            <div className="flex px-3 py-2 space-x-2">
-              <button
-                className={`rounded-full p-1 ${
-                  inputValue.trim() && isConnected && !isLoading
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : darkMode ? 'text-gray-500' : 'text-gray-400'
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || !isConnected}
+              className={`ml-3 px-5 py-3 rounded-lg font-semibold text-white transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
+                ${isLoading || !isConnected 
+                  ? (darkMode ? 'bg-gray-600 cursor-not-allowed' : 'bg-gray-400 cursor-not-allowed')
+                  : (darkMode ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 focus:ring-offset-gray-800' : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50')
                 }`}
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading || !isConnected}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m22 2-7 20-4-9-9-4Z" />
-                  <path d="M22 2 11 13" />
+            >
+              {isLoading ? (
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-              </button>
-            </div>
+              ) : "Send"}
+            </button>
           </div>
-          
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            {isConnected
-              ? "Linux Command Assistant powered by AI. Verify commands before executing."
-              : (
-                <span>
-                  Server: {apiUrl} •
-                  {serverCheckAttempts > 3
-                    ? <button
-                        onClick={changeApiUrl}
-                        className="underline ml-1 hover:text-blue-500"
-                      >
-                        Change API URL
-                      </button>
-                    : <button
-                        onClick={() => checkServerHealthWithRetry(2, 8000)}
-                        className="underline ml-1 hover:text-blue-500"
-                      >
-                        Retry connection
-                      </button>
-                  }
-                </span>
-              )
-            }
-          </p>
         </div>
       </div>
     </div>
