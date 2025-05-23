@@ -118,10 +118,10 @@ const Sidebar = ({
   });
 
   return (
-    <div className={`fixed inset-y-0 left-0 z-30 w-64 min-w-64 max-w-64 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} border-r ${darkMode ? 'border-gray-700' : 'border-gray-300'} transform ${isVisible ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col print:hidden`}> 
-      <div className={`p-4 flex justify-between items-center border-b ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-gray-100'}`}> 
-        <h2 className={`text-lg font-semibold ${darkMode ? 'text-blue-200' : 'text-blue-700'}`}>Conversations</h2>
-        <button onClick={toggleSidebar} className={`md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}> 
+    <div className={`fixed inset-y-0 left-0 z-30 w-64 min-w-64 max-w-64 ${darkMode ? 'bg-gray-950' : 'bg-blue-50'} border-r ${darkMode ? 'border-gray-700' : 'border-gray-300'} transform ${isVisible ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col print:hidden`}> 
+      <div className={`h-20 p-4 flex justify-between items-center border-b ${darkMode ? 'border-gray-700 bg-gray-950' : 'border-gray-300 bg-blue-50'}`}> 
+        <h2 className={`text-lg font-semibold ${darkMode ? 'text-blue-200' : 'text-blue-700'}`}>AI Linux Cmd assistant</h2>
+        <button onClick={toggleSidebar} className={`md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-blue-900' : 'hover:bg-blue-100'}`}> 
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -146,7 +146,7 @@ const Sidebar = ({
             key={conversation.id} 
             className={`group relative p-2.5 rounded-lg cursor-pointer transition-colors duration-150 flex flex-col min-h-[64px] max-h-[64px] justify-center
               ${currentConversationId === conversation.id 
-                ? (darkMode ? 'bg-blue-900 text-blue-100 border border-blue-700' : 'bg-blue-500 text-white border border-blue-500') 
+                ? (darkMode ? 'bg-gray-800 text-blue-100 border border-gray-700' : 'bg-gray-200 text-black border border-gray-300') 
                 : (darkMode ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-gray-200 text-gray-700')}
             `}
             style={{ minHeight: 64, maxHeight: 64 }}
@@ -182,7 +182,7 @@ const Sidebar = ({
             ) : (
               <div onClick={() => setCurrentConversationId(conversation.id)} className="flex flex-col h-full justify-center">
                 <div className="flex justify-between items-center w-full">
-                  <span className={`font-semibold text-base truncate pr-10 ${currentConversationId === conversation.id && !darkMode ? 'text-white' : (darkMode ? 'text-blue-100' : 'text-gray-900')}`} title={conversation.title}>
+                  <span className={`font-semibold text-base truncate pr-10 ${currentConversationId === conversation.id && !darkMode ? 'text-blue-800' : (darkMode ? 'text-blue-200' : 'text-gray-900')}`} title={conversation.title}>
                     {conversation.title || 'New Conversation'}
                   </span>
                   <div className="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -202,7 +202,7 @@ const Sidebar = ({
                     </button>
                   </div>
                 </div>
-                <div className={`text-xs mt-1 ${currentConversationId === conversation.id && !darkMode ? 'text-blue-100' : (darkMode ? 'text-blue-200' : 'text-gray-500')}`}> 
+                <div className={`text-xs mt-1 ${currentConversationId === conversation.id && !darkMode ? 'text-black' : (darkMode ? 'text-blue-200' : 'text-gray-500')}`}> 
                   {conversation.message_count > 0 ? 
                     `${conversation.message_count} message${conversation.message_count > 1 ? 's' : ''}` : 'Empty'}
                   {conversation.updated_at && ( // Use updated_at for display
@@ -215,7 +215,7 @@ const Sidebar = ({
         ))}
       </nav>
       {/* Footer */}
-      <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-gray-100'}`}> 
+      <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-950' : 'border-gray-300 bg-blue-50'}`}> 
         {userInfo && (
           <div className={`mb-3 p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
             <div className="flex items-center space-x-3">

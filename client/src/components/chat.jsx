@@ -20,18 +20,19 @@ const getInitialMessages = (isFirstTime = true) => {
 };
 
 // AI Message Component
-const AiMessage = ({ message, isDarkMode }) => {
+const AiMessage = ({ message, isDarkMode, isLoading }) => {
   const formattedDate = new Date(message.timestamp).toLocaleString([], {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   });
- 
+
   return (
-    <div className="flex items-start mb-4">
+    <div className="flex items-start mb-4 justify-start">
       <div className="flex-shrink-0 mr-3 mt-1">
-        <div className="bg-blue-500 rounded-full p-2 text-white"> {/* AI Icon, kept blue */}
+        <div className="bg-blue-600 dark:bg-blue-800 rounded-full p-2 text-white">
+          {/* AI Icon, kept blue */}
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 8V4H8" />
             <rect x="2" y="2" width="20" height="8" rx="2" />
@@ -41,36 +42,44 @@ const AiMessage = ({ message, isDarkMode }) => {
           </svg>
         </div>
       </div>
-      <div className="flex-1">
-        <div className={`${isDarkMode ? 'bg-slate-700 text-gray-200' : 'bg-gray-200 text-gray-800'} rounded-lg px-4 py-3 max-w-full`}>
+      <div className="flex-1 max-w-[80%]">
+        <div className={`${isDarkMode ? 'bg-gray-800 text-blue-100' : 'bg-blue-100 text-blue-900'} rounded-lg px-4 py-3 relative`}>
           <div className="whitespace-pre-wrap">
             {message.content}
+            {isLoading && (
+              <span className="ml-2 align-middle flex items-center">
+                <span className="relative flex h-5 w-5 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-blue-500"></span>
+                </span>
+                <span className="ml-1 text-blue-400">AI is thinking...</span>
+              </span>
+            )}
           </div>
         </div>
-        <div className="text-xs text-gray-500 mt-1 ml-1">{formattedDate}</div>
+        <div className="text-xs text-blue-400 mt-1 ml-1">{formattedDate}</div>
       </div>
     </div>
   );
 };
 
 // User Message Component
-const UserMessage = ({ message }) => {
+const UserMessage = ({ message, alignRight, isDarkMode }) => {
   const formattedDate = new Date(message.timestamp).toLocaleString([], {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   });
- 
+
   return (
     <div className="flex items-start mb-4 justify-end">
-      <div className="flex-1 text-right">
-        <div className="bg-blue-500 rounded-lg px-4 py-3 inline-block text-left max-w-full ml-12"> {/* User message bubble, changed to blue-500 */}
-          <div className="whitespace-pre-wrap text-white">
-            {message.content}
-          </div>
+      <div className="flex-1 flex justify-end max-w-[80%]">
+        <div className={`${isDarkMode ? 'bg-blue-700 text-blue-100' : 'bg-blue-400 text-white'} rounded-lg px-4 py-3 inline-block text-left ml-12`}>
+          <div className="whitespace-pre-wrap">{message.content}</div>
+          <div className="text-xs text-white-400 mt-1 ml-1">{formattedDate}</div>
+          {/* Date under the user message bubble, left-aligned */}
         </div>
-        <div className="text-xs text-gray-500 mt-1 mr-1">{formattedDate}</div>
       </div>
       <div className="flex-shrink-0 ml-3 mt-1">
         <div className="bg-gray-300 dark:bg-gray-700 rounded-full p-2">
@@ -895,7 +904,7 @@ export default function ChatApp() {
   }
 
   return (
-    <div className={`flex h-screen antialiased text-gray-800 ${darkMode ? 'dark' : ''}`}>
+    <div className={`flex h-screen antialiased ${darkMode ? 'bg-[#181c24] text-blue-100' : 'bg-blue-50 text-blue-900'} print:bg-white`}>
       <Sidebar
         darkMode={darkMode}
         conversations={conversations}
@@ -910,14 +919,14 @@ export default function ChatApp() {
         isVisible={sidebarVisible}
         toggleSidebar={toggleSidebar}
       />
-      <div className={`flex-1 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} print:bg-white`}>
+      <div className={`flex-1 flex flex-col ${darkMode ? 'bg-[#181c24]' : 'bg-blue-50'} print:bg-white`}>
         {/* Header */}
-        <header className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-gray-100'} flex justify-between items-center print:hidden`}>
+        <header className={`h-20 p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-950' : 'border-gray-300 bg-blue-50'} flex justify-between items-center print:hidden`}>
           <div className="flex items-center">
-            <button onClick={toggleSidebar} className={`mr-3 md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+            <button onClick={toggleSidebar} className={`mr-3 md:hidden p-1 rounded-md ${darkMode ? 'hover:bg-blue-900' : 'hover:bg-blue-100'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            <h1 className={`text-xl font-semibold ${darkMode ? 'text-blue-200' : 'text-blue-700'}`}>
+            <h1 className={`text-xl font-semibold ${darkMode ? 'text-blue-300' : (currentConversationId && conversations.find(c => c.id === currentConversationId && c.title === 'New Conversation') ? 'text-blue-900' : 'text-pink-700')}`}>
               {currentConversationId && conversations.find(c => c.id === currentConversationId)
                 ? conversations.find(c => c.id === currentConversationId).title
                 : "Linux Command Assistant"}
@@ -927,7 +936,7 @@ export default function ChatApp() {
             <ConnectionStatus isConnected={isConnected} isDarkMode={darkMode} onRetryConnection={() => checkServerHealthWithRetry(0, 2000)} />
             <button 
               onClick={toggleDarkMode} 
-              className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700 text-yellow-400' : 'hover:bg-gray-200 text-gray-600'}`}
+              className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-blue-900' : 'hover:bg-blue-100'}`}
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {darkMode ? (
@@ -948,10 +957,10 @@ export default function ChatApp() {
                 </svg>
               )}
             </button>
-            <button onClick={changeApiUrl} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600'}`} title="Change API URL">
+            <button onClick={changeApiUrl} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-blue-900 text-blue-200' : 'hover:bg-blue-100 text-blue-700'}`} title="Change API URL">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.62 2.514a1 1 0 0 1 1.242.21l3.015 3.015a1 1 0 0 1 .21 1.242L9.01 19.018a1 1 0 0 1-1.112.39L2.514 17.38a1 1 0 0 1-.616-1.112l3.015-10.74a1 1 0 0 1 .39-.616zM13.5 6.5l4 4M2.5 21.5l4-4"/><path d="m19 5-9 9"/></svg>
             </button>
-            <button onClick={handleLogout} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-red-700 text-red-400' : 'hover:bg-red-100 text-red-600'}`} title="Logout">
+            <button onClick={handleLogout} className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-red-800 text-red-400' : 'hover:bg-red-100 text-red-600'}`} title="Logout">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           </div>
@@ -959,33 +968,35 @@ export default function ChatApp() {
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg, index) => {
-            if (msg.sender === 'ai' || msg.sender === 'bot') { // Modified to check for 'bot' as well
-              return <AiMessage key={msg.id || index} message={msg} isDarkMode={darkMode} />;
-            } else if (msg.sender === 'user') {
-              return <UserMessage key={msg.id || index} message={msg} />;
-            } else if (msg.sender === 'error') {
-              return <ErrorMessage 
-                        key={msg.id || index} 
-                        message={msg.content} 
-                        isDarkMode={darkMode} 
-                        onRetry={msg.originalQuestion ? () => handleRetryMessage(msg.originalQuestion) : null} 
-                     />;
-            }
-            return null;
-          })}
-          <div ref={messagesEndRef} />
+          <div className="w-full max-w-3xl mx-auto">
+            {messages.map((msg, index) => {
+              if (msg.sender === 'ai' || msg.sender === 'bot') {
+                return <AiMessage key={msg.id || index} message={msg} isDarkMode={darkMode} isLoading={isLoading && index === messages.length - 1 && msg.sender === 'ai'} />;
+              } else if (msg.sender === 'user') {
+                return <UserMessage key={msg.id || index} message={msg} alignRight isDarkMode={darkMode} />;
+              } else if (msg.sender === 'error') {
+                return <ErrorMessage 
+                          key={msg.id || index} 
+                          message={msg.content} 
+                          isDarkMode={darkMode} 
+                          onRetry={msg.originalQuestion ? () => handleRetryMessage(msg.originalQuestion) : null} 
+                       />;
+              }
+              return null;
+            })}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
         {/* Input Area */}
-        <div className={`chat-input-area p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+        <div className={`chat-input-area p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-gray-100'}`}>
           <div className="flex items-center">
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your command or question..."
-              className={`flex-1 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:ring-blue-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:ring-blue-500'}`}
+              className={`flex-1 p-3 rounded-lg resize-none focus:outline-none focus:ring-2 ${darkMode ? 'bg-gray-800 text-blue-100 placeholder-gray-400 focus:ring-gray-500' : 'bg-white text-blue-900 placeholder-gray-500 focus:ring-gray-400'}`}
               rows="1"
               style={{ minHeight: '48px', maxHeight: '150px' }}
             />
@@ -994,16 +1005,20 @@ export default function ChatApp() {
               disabled={isLoading || !isConnected}
               className={`ml-3 px-5 py-3 rounded-lg font-semibold text-white transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
                 ${isLoading || !isConnected 
-                  ? (darkMode ? 'bg-gray-600 cursor-not-allowed' : 'bg-gray-400 cursor-not-allowed')
-                  : (darkMode ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 focus:ring-offset-gray-800' : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500 focus:ring-offset-gray-50')
+                  ? (darkMode ? 'bg-gray-700 cursor-not-allowed' : 'bg-gray-300 cursor-not-allowed')
+                  : (darkMode ? 'bg-gray-700 hover:bg-gray-600 focus:ring-gray-500 focus:ring-offset-gray-900' : 'bg-gray-700 hover:bg-gray-800 focus:ring-gray-400 focus:ring-offset-gray-100')
                 }`}
             >
               {isLoading ? (
                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-              ) : "Send"}
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
