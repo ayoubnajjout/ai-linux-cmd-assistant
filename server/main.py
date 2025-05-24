@@ -1,9 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel, PeftConfig
-import torch
+import httpx
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -29,25 +27,8 @@ DATABASE_NAME = "chatbot_db"
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DATABASE_NAME]
 
-# Load model and tokenizer
-model_name = "gpt2-medium"
-peft_model_id = "content/linux_commands_model_final"  # Path to your saved model
-
-# Check for GPU availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Load base model
-model = AutoModelForCausalLM.from_pretrained(model_name)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-# Configure tokenizer
-tokenizer.pad_token = tokenizer.eos_token
-model.config.pad_token_id = model.config.eos_token_id
-
-# Load PEFT model
-model = PeftModel.from_pretrained(model, peft_model_id)
-model = model.to(device)
-model.eval()
+# Model API configuration
+MODEL_API_URL = "http://localhost:8081"
 
 # Pydantic models
 class UserRegister(BaseModel):
@@ -104,25 +85,24 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed_password: str) -> bool:
     return hashlib.sha256(password.encode()).hexdigest() == hashed_password
 
-def generate_answer(question: str) -> str:
-    prompt = f"Linux Command Question: {question.strip()}\n\nAnswer:"
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs.input_ids,
-            max_length=300,
-            temperature=0.7,
-            top_p=0.9,
-            num_return_sequences=1,
-            pad_token_id=tokenizer.eos_token_id,
-            do_sample=True,
-        )
-
-    full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    answer = full_response.split("Answer:")[1].strip()
-    answer = answer.split("<|endoftext|>")[0].strip()
-    return answer
+async def generate_answer(question: str) -> str:
+    """Generate an answer using the model API service"""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(f"{MODEL_API_URL}/ask", 
+                                       json={"question": question})
+            response.raise_for_status()
+            data = response.json()
+            return data.get("answer", "Sorry, I couldn't generate a response.")
+    except httpx.RequestError as e:
+        print(f"Error connecting to model API: {e}")
+        return "Sorry, the AI model service is currently unavailable. Please try again later."
+    except httpx.HTTPStatusError as e:
+        print(f"Model API returned error {e.response.status_code}: {e.response.text}")
+        return "Sorry, there was an error processing your request. Please try again."
+    except Exception as e:
+        print(f"Unexpected error calling model API: {e}")
+        return "Sorry, an unexpected error occurred. Please try again."
 
 def generate_conversation_title(first_message: str) -> str:
     """Generate a conversation title based on the first message"""
@@ -408,9 +388,8 @@ async def send_message(request: SendMessageRequest):
             "timestamp": now
         }
         user_message_result = await db.messages.insert_one(user_message_doc)
-        
-        # Generate bot response
-        bot_response = generate_answer(request.message)
+          # Generate bot response
+        bot_response = await generate_answer(request.message)
         
         # Save bot message
         bot_message_doc = {
@@ -528,9 +507,8 @@ async def ask_question(request: dict):
             "timestamp": now
         }
         await db.messages.insert_one(user_message_doc)
-        
-        # Generate bot response
-        bot_response = generate_answer(question)
+          # Generate bot response
+        bot_response = await generate_answer(question)
         
         # Save bot message
         bot_message_doc = {
@@ -557,7 +535,20 @@ async def ask_question(request: dict):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    health_status = {"status": "healthy", "model_api": "unknown"}
+    
+    # Check model API health
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{MODEL_API_URL}/docs")  # FastAPI auto-generates /docs
+            if response.status_code == 200:
+                health_status["model_api"] = "healthy"
+            else:
+                health_status["model_api"] = "unhealthy"
+    except Exception:
+        health_status["model_api"] = "unavailable"
+    
+    return health_status
 
 # Database initialization
 @app.on_event("startup")

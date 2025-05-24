@@ -933,14 +933,13 @@ export default function ChatApp() {
             </h1>
           </div>
           <div className="flex items-center space-x-3">
-            <ConnectionStatus isConnected={isConnected} isDarkMode={darkMode} onRetryConnection={() => checkServerHealthWithRetry(0, 2000)} />
-            <button 
+            <ConnectionStatus isConnected={isConnected} isDarkMode={darkMode} onRetryConnection={() => checkServerHealthWithRetry(0, 2000)} />            <button 
               onClick={toggleDarkMode} 
-              className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-blue-900' : 'hover:bg-blue-100'}`}
+              className={`p-2 rounded-full focus:outline-none transition-colors duration-200 ${darkMode ? 'hover:bg-blue-900 text-yellow-400' : 'hover:bg-blue-100'}`}
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {darkMode ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
                   <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
                 </svg>
               ) : (
