@@ -2,6 +2,8 @@
 
 This project is an AI-powered assistant designed to help users with Linux commands. It utilizes a fine-tuned Llama 2 model to understand and respond to queries related to Linux.
 
+https://github.com/user-attachments/assets/561adf64-1351-4d08-b159-eb9ce298a7b1
+
 ## Features
 
 *   **Linux Command Assistance:** Provides help and explanations for various Linux commands.
@@ -119,11 +121,3 @@ ai-linux-cmd-assistant/
 ## Fine-tuning
 
 The `fine_tunning_pipeline.ipynb` notebook contains the code and steps used to fine-tune the base Llama 2 model with the provided `linux_cmds.csv` and `linux_qa.csv` datasets. You can explore this notebook to understand the fine-tuning process or to customize the model further with your own data.
-
-## Contributing
-
-(Add guidelines for contributing to the project if applicable)
-
-## License
-
-(Specify the license for your project, e.g., MIT, Apache 2.0)
