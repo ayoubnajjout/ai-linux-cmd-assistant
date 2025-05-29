@@ -12,6 +12,10 @@ https://github.com/user-attachments/assets/561adf64-1351-4d08-b159-eb9ce298a7b1
 *   **FastAPI Backend:** A robust Python backend serving the AI model and handling API requests.
 *   **GPU/CPU Support:** Automatically detects and utilizes available GPU for faster inference, with a fallback to CPU.
 
+## Project Architecture
+
+![architecture](https://github.com/user-attachments/assets/42ef178a-a4a4-4322-8625-ea5237aa23b3)
+
 ## Tech Stack
 
 *   **Backend:**
